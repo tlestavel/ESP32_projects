@@ -1,0 +1,20 @@
+{
+    "files.associations": {
+        "esp_log.h": "c",
+        "sdkconfig.h": "c",
+        "esp_event_loop.h": "c",
+        "esp_wifi.h": "c",
+        "nvs_flash.h": "c",
+        "nvs.h": "c",
+        "gpio.h": "c",
+        "esp_system.h": "c",
+        "blink.h": "c",
+        "stdio.h": "c",
+        "wifi_tcp_server_sta.h": "c",
+        "i2c.h": "c",
+        "ov7670.h": "c",
+        "task.h": "c"
+    },
+    "C_Cpp.intelliSenseEngineFallback": "Enabled",
+    "C_Cpp.errorSquiggles": "Disabled"
+}
