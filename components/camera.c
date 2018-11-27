@@ -43,6 +43,8 @@
 #include "ov7725.h"
 #endif
 
+#include "ov7670.h"
+
 #define ENABLE_TEST_PATTERN CONFIG_ENABLE_TEST_PATTERN
 
 #define REG_PID        0x0A
@@ -148,8 +150,8 @@ esp_err_t camera_probe(const camera_config_t* config, camera_model_t* out_camera
     ESP_LOGD(tag, "Enabling XCLK output");
     camera_enable_out_clock(config);
 
-    // Configure the SCCB (I2C mode)
-    ESP_LOGD(tag, "Initializing SSCB");
+    // Configure the I2C
+    ESP_LOGD(tag, "Initializing I2C");
     i2c_init(config->pin_i2c_sda, config->pin_i2c_scl);
 
     // Reset the camera 
@@ -169,49 +171,47 @@ esp_err_t camera_probe(const camera_config_t* config, camera_model_t* out_camera
     /* Probe the sensor */
     delay(10);
 
-    // Read all 127 I2C addresses
-    // Suppose there is only 1 I2C device connected
-    // TODO : to change and only check for OV7670
-    uint8_t slv_addr = SCCB_Probe();
-    if (slv_addr == 0) 
-    {
-        *out_camera_model = CAMERA_NONE;
-        return ESP_ERR_CAMERA_NOT_DETECTED;
-    }
-    s_state->sensor.slv_addr = slv_addr;
-    ESP_LOGD(tag, "Detected camera at address=0x%02x", slv_addr);
+    // Set the OV7670 Address
+    s_state->sensor.slv_addr = OV7670_ADDRESS;
 
     // Write the Camera IDs
     sensor_id_t* id = &s_state->sensor.id;
-    id->PID = SCCB_Read(slv_addr, REG_PID);
-    id->VER = SCCB_Read(slv_addr, REG_VER);
-    id->MIDL = SCCB_Read(slv_addr, REG_MIDL);
-    id->MIDH = SCCB_Read(slv_addr, REG_MIDH);
+    id->PID = SCCB_Read(s_state->sensor.slv_addr, REG_PID);
+    id->VER = SCCB_Read(s_state->sensor.slv_addr, REG_VER);
+    id->MIDL = SCCB_Read(s_state->sensor.slv_addr, REG_MIDL);
+    id->MIDH = SCCB_Read(s_state->sensor.slv_addr, REG_MIDH);
     delay(10);
     ESP_LOGD(tag, "Camera PID=0x%02x VER=0x%02x MIDL=0x%02x MIDH=0x%02x",
             id->PID, id->VER, id->MIDH, id->MIDL);
 
-    // TODO: support for OV7670
-    switch (id->PID) 
+    if(id->PID != 7670)
     {
-#if CONFIG_OV2640_SUPPORT
-        case OV2640_PID:
-            *out_camera_model = CAMERA_OV2640;
-            ov2640_init(&s_state->sensor);
-            break;
-#endif
-#if CONFIG_OV7725_SUPPORT
-        case OV7725_PID:
-            *out_camera_model = CAMERA_OV7725;
-            ov7725_init(&s_state->sensor);
-            break;
-#endif
-        default:
-            id->PID = 0;
-            *out_camera_model = CAMERA_UNKNOWN;
-            ESP_LOGD(tag, "Detected camera not supported.");
-            return ESP_ERR_CAMERA_NOT_SUPPORTED;
+        ESP_LOGE(tag, "Camera not detected !");
+        return ESP_ERR_CAMERA_NOT_DETECTED;
     }
+
+    *out_camera_model = CAMERA_OV7670;
+    // TODO: support for OV7670
+//     switch (id->PID) 
+//     {
+// #if CONFIG_OV2640_SUPPORT
+//         case OV2640_PID:
+//             *out_camera_model = CAMERA_OV2640;
+//             ov2640_init(&s_state->sensor);
+//             break;
+// #endif
+// #if CONFIG_OV7725_SUPPORT
+//         case OV7725_PID:
+//             *out_camera_model = CAMERA_OV7725;
+//             ov7725_init(&s_state->sensor);
+//             break;
+// #endif
+//         default:
+//             id->PID = 0;
+//             *out_camera_model = CAMERA_UNKNOWN;
+//             ESP_LOGD(tag, "Detected camera not supported.");
+//             return ESP_ERR_CAMERA_NOT_SUPPORTED;
+//     }
 
     // Reset and write all default register 
     // TODO : clean, but needed?
